@@ -1,0 +1,1 @@
+start java -jar SimpleWebServer.jar -p private -d data
