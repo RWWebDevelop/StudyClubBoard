@@ -3,6 +3,4 @@
 
 __TODO: We'll try to refactor the code and maybe add additional functions in the future.__
 
-_Next report - 05/02_
-
 __Contributors:__ _Robin and Willie_
