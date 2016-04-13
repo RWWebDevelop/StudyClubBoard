@@ -41,7 +41,9 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.URLEncoder;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -55,6 +57,7 @@ import java.util.StringTokenizer;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileItemIterator;
 import org.apache.commons.fileupload.FileItemStream;
+import org.apache.commons.fileupload.FileUploadException;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.util.Streams;
 
@@ -66,6 +69,7 @@ public class SimpleWebServer extends NanoHTTPD {
 	
 	// For file upload
 	public Map<String, List<FileItem>> files;
+	private String serverIPAddr;
 	private NanoFileUpload uploader;
 	
 	/**
@@ -231,6 +235,11 @@ public class SimpleWebServer extends NanoHTTPD {
         this.quiet = quiet;
         this.cors = cors;
         this.rootDirs = new ArrayList<File>(wwwroots);
+        try {
+			this.serverIPAddr = (InetAddress.getLocalHost()).getHostAddress();
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+		}
 
         init();
     }
@@ -472,9 +481,9 @@ public class SimpleWebServer extends NanoHTTPD {
             while (e.hasNext()) {
                 String value = e.next();
                 System.out.println("  PRM: '" + value + "' = '" + parms.get(value) + "'");
-                // If the client send stop message
-                if(value.compareTo("x")==0 && (parms.get(value)).compareTo("true")==0){
-                	setIsEsc(true);
+                // If the client send stop message, exit the program
+                if(value.compareTo("exit")==0 && (parms.get(value)).compareTo("true")==0){
+                	remoteCloseProgram();
                 }
             }
         }
@@ -488,35 +497,14 @@ public class SimpleWebServer extends NanoHTTPD {
         
         // Handle file uploading
         if ("/uploadpage".equals(uri)) {
-        	response = newFixedLengthResponse("<html><body> \n <form action=\"http://localhost:"+(new Integer(this.getListeningPort())).toString()+"/uploadFile\" enctype=\"multipart/form-data\"  method=\"post\" >\n  <input type=\"file\" id=\"datafile1\" name=\"datafile1\" size=\"40\" ><br>\n <input type=\"submit\"> \n </form> \n </body></html>\n");
-        	return response;
+        	return getUploadformPage();
         }
         
+        // Store the file uploaded from client
         if (NanoFileUpload.isMultipartContent(session)) {
             try {
-            	uploader = new NanoFileUpload(new DiskFileItemFactory());
             	if ("/uploadFile".equals(uri)) {
-                    files = new HashMap<String, List<FileItem>>();
-                    FileItemIterator iter = uploader.getItemIterator(session);
-                    String fileName = "", newFileName = "";
-                    while (iter.hasNext()) {
-                        FileItemStream item = iter.next();
-                        fileName = item.getName();
-                        newFileName = rootDirs.get(0)+"/".concat(fileName);
-                        FileItem fileItem = uploader.getFileItemFactory().createItem(item.getFieldName(), item.getContentType(), item.isFormField(), newFileName);
-                        files.put(fileItem.getFieldName(), Arrays.asList(new FileItem[]{
-                            fileItem
-                        }));
-                        
-                        try {
-                            Streams.copy(item.openStream(), (new FileOutputStream(newFileName)), true);
-                        } catch (Exception e) {
-                        	System.err.println(e.getMessage());
-                        }
-                        fileItem.setHeaders(item.getHeaders());
-                    }
-                    response = newFixedLengthResponse("<html><body> \n File: "+fileName+" upload to "+newFileName+"! \n </body></html>\n");
-                    return response;
+                    return getUploadMsgAndExec(session);
                 }
             } catch (Exception e) {
                 response.setStatus(Status.INTERNAL_ERROR);
@@ -631,6 +619,48 @@ public class SimpleWebServer extends NanoHTTPD {
 
         return res;
     }
+    
+    // Send the form-upload page to the client
+    private Response getUploadformPage(){
+    	 return newFixedLengthResponse("<html><body> \n <form action=\"http://"+
+    			 serverIPAddr+":"+(new Integer(this.getListeningPort())).toString()+
+    			 "/uploadFile\" enctype=\"multipart/form-data\"  method=\"post\" >\n"
+    			 + "  <input type=\"file\" id=\"datafile1\" name=\"datafile1\" "
+    			 + "size=\"40\" ><br>\n <input type=\"submit\"> \n </form> \n "
+    			 + "</body></html>\n");
+    }
+    
+    // Get the uploaded files from client and store in the server locally
+    private Response getUploadMsgAndExec(IHTTPSession session) throws FileUploadException, IOException{
+    	uploader = new NanoFileUpload(new DiskFileItemFactory());
+        files = new HashMap<String, List<FileItem>>();
+        FileItemIterator iter = uploader.getItemIterator(session);
+        String fileName = "", newFileName = "";
+        try {
+			while (iter.hasNext()) {
+			    FileItemStream item = iter.next();
+			    fileName = item.getName();
+			    newFileName = rootDirs.get(0)+"/".concat(fileName);
+			    FileItem fileItem = uploader.getFileItemFactory().createItem(item.getFieldName(), item.getContentType(), item.isFormField(), newFileName);
+			    files.put(fileItem.getFieldName(), Arrays.asList(new FileItem[]{
+			        fileItem
+			    }));
+			    
+			    try {
+			        Streams.copy(item.openStream(), (new FileOutputStream(newFileName)), true);
+			    } catch (Exception e) {
+			    	System.err.println(e.getMessage());
+			    }
+			    fileItem.setHeaders(item.getHeaders());
+			}
+		} catch (FileUploadException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+        return newFixedLengthResponse("<html><body> \n File: "+fileName+" upload to "
+        		+newFileName+"! \n </body></html>\n");
+    }
 
     private Response newFixedFileResponse(File file, String mime) throws FileNotFoundException {
         Response res;
@@ -655,6 +685,10 @@ public class SimpleWebServer extends NanoHTTPD {
         // several time the same header
         // let's just use default values for this version
         return System.getProperty(ACCESS_CONTROL_ALLOW_HEADER_PROPERTY_NAME, DEFAULT_ALLOWED_HEADERS);
+    }
+    
+    private void remoteCloseProgram(){
+    	setIsEsc(true);
     }
 
     private final static int PUBLIC = 30801;
