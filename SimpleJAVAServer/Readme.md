@@ -4,8 +4,8 @@
 __HOW TO RUN:__   
 1. install Java Runtime Environment (version >= 8):   
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html   
-2. Run the file _run.bat_.   
-3. Open and type _http://_ ___your.ip.address:port___ in your browser.   
+2. Run the file __run.bat__.   
+3. Open and type ___http://your.ip.address:port___ in your browser.   
 4. And you can access the server.   
 
 _2016-04-12 - first version release!_    
