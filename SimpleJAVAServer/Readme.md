@@ -4,9 +4,9 @@
 __HOW TO RUN:__   
 1. install Java Runtime Environment (version >= 8):   
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html   
-2. Run the file _run.bat_.
-3. Open and type _http://_ ___your.ip.address:port___ in your browser.
-4. And you can access the server
+2. Run the file _run.bat_.   
+3. Open and type _http://_ ___your.ip.address:port___ in your browser.   
+4. And you can access the server.   
 
 _2016-04-12 - first version release!_    
 _2016-04-13 - code refactor, fix the file upload issue and the post message can point to server IP address._    
