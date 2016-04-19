@@ -8,6 +8,7 @@ __HOW TO RUN:__
 3. Open and type ___http://your.ip.address:port___ in your browser.   
 4. And you can access the server.   
 
+__Realese Notes:__   
 _2016-04-12 - first version release!_    
 _2016-04-13 - code refactor, fix the file upload issue and the post message can point to server IP address._    
 
